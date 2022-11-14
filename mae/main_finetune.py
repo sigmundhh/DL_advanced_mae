@@ -38,6 +38,7 @@ import models_vit
 
 from engine_finetune import train_one_epoch, evaluate
 
+import wandb
 
 def get_args_parser():
     parser = argparse.ArgumentParser('MAE fine-tuning for image classification', add_help=False)
@@ -165,6 +166,13 @@ def get_args_parser():
 
 def main(args):
     misc.init_distributed_mode(args)
+
+    # WandB init
+    wandb.init(
+        project="DL_advanced_mae",
+        config=args,
+        sync_tensorboard=True
+    )
 
     print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
     print("{}".format(args).replace(', ', ',\n'))
@@ -346,6 +354,11 @@ def main(args):
                         **{f'test_{k}': v for k, v in test_stats.items()},
                         'epoch': epoch,
                         'n_parameters': n_parameters}
+        
+        """wandb.log({**{f'train_{k}': v for k, v in train_stats.items()},
+                        **{f'test_{k}': v for k, v in test_stats.items()},
+                        'epoch': epoch,
+                        'n_parameters': n_parameters})"""
 
         if args.output_dir and misc.is_main_process():
             if log_writer is not None:
@@ -356,7 +369,7 @@ def main(args):
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
-
+    wandb.finish()
 
 if __name__ == '__main__':
     args = get_args_parser()
