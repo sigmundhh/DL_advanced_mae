@@ -34,8 +34,6 @@ import models_mae
 
 from engine_pretrain import train_one_epoch
 
-import wandb
-
 
 def get_args_parser():
     parser = argparse.ArgumentParser('MAE pre-training', add_help=False)
@@ -58,6 +56,18 @@ def get_args_parser():
     parser.add_argument('--norm_pix_loss', action='store_true',
                         help='Use (per-patch) normalized pixels as targets for computing loss')
     parser.set_defaults(norm_pix_loss=False)
+
+    parser.add_argument('--encoder_dim', default = 768, type = int,
+                        help='The encoder dimension')
+
+    parser.add_argument('--encoder_depth', default = 12, type = int,
+                        help='The encoder depth')
+    
+    parser.add_argument('--decoder_dim', default = 512, type = int,
+                        help='The decoder dimension')
+    
+    parser.add_argument('--decoder_depth', default = 8, type = int,
+                        help='The decoder depth')
 
     # Optimizer parameters
     parser.add_argument('--weight_decay', type=float, default=0.05,
@@ -108,13 +118,6 @@ def get_args_parser():
 
 def main(args):
     misc.init_distributed_mode(args)
-    
-    # WandB init
-    wandb.init(
-        project="DL_advanced_mae",
-        config=args,
-        sync_tensorboard=True
-    )
 
     print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
     print("{}".format(args).replace(', ', ',\n'))
@@ -162,7 +165,7 @@ def main(args):
     )
     
     # define the model
-    model = models_mae.__dict__[args.model](norm_pix_loss=args.norm_pix_loss)
+    model = models_mae.__dict__[args.model](embed_dim = args.encoder_dim, depth=args.encoder_depth, decoder_embed_dim=args.decoder_dim, decoder_depth= args.decoder_depth,norm_pix_loss=args.norm_pix_loss)
 
     model.to(device)
 
@@ -210,9 +213,6 @@ def main(args):
 
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                         'epoch': epoch,}
-        
-        """wandb.log({**{f'train_{k}': v for k, v in train_stats.items()},
-                        'epoch': epoch,})"""
 
         if args.output_dir and misc.is_main_process():
             if log_writer is not None:
@@ -223,7 +223,6 @@ def main(args):
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
-    wandb.finish()
 
 
 if __name__ == '__main__':

@@ -43,7 +43,9 @@ def get_args_parser():
     parser = argparse.ArgumentParser('MAE fine-tuning for image classification', add_help=False)
     parser.add_argument('--batch_size', default=64, type=int,
                         help='Batch size per GPU (effective batch size is batch_size * accum_iter * # gpus')
+    
     parser.add_argument('--epochs', default=50, type=int)
+    
     parser.add_argument('--accum_iter', default=1, type=int,
                         help='Accumulate gradient iterations (for increasing the effective batch size under memory constraints)')
 
@@ -56,6 +58,12 @@ def get_args_parser():
 
     parser.add_argument('--drop_path', type=float, default=0.1, metavar='PCT',
                         help='Drop path rate (default: 0.1)')
+
+    parser.add_argument('--encoder_dim', type = int, default= 768,
+                        help = 'Encoder dimension')
+    
+    parser.add_argument('--encoder_depth', type = int, default= 12,
+                        help = 'Encoder depth')
 
     # Optimizer parameters
     parser.add_argument('--clip_grad', type=float, default=None, metavar='NORM',
@@ -228,6 +236,8 @@ def main(args):
         num_classes=args.nb_classes,
         drop_path_rate=args.drop_path,
         global_pool=args.global_pool,
+        embed_dim = args.encoder_dim,
+        depth = args.encoder_depth,
     )
 
     if args.finetune and not args.eval:
