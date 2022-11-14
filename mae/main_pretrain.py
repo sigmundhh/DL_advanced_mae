@@ -132,6 +132,18 @@ def main(args):
     cudnn.benchmark = True
 
     # simple augmentation
+    # Notes on data augmentation:
+    # 1. size = args.input_size is how big the resulted image should be (i.e. the input size). It is logical
+    #    that this value should be constant for all the inputs
+    # 2. scale = (0.2, 1.0) is the random scale part of the data augmentation. It is a relative number. So e.g.
+    #    0.2 mean 20% of the image and 1.0 means 100% of the image. The scale takes a value in between these numbers
+    #    all the time meaning we get random size. However, these are then upsamples to get the 'size'. If we want to
+    #    to have a test on this and we want the fixed size data augmentation we should do the scale (x,x). Where x
+    #    should be a constant and decided up infront.
+    # 3. RandomHorizontalFlip basically flips the images upside down.
+    # The example in https://www.tutorialspoint.com/pytorch-torchvision-transforms-randomresizedcrop is intuitive
+    # To add color jitter should be as simple as:
+    #   transforms.ColorJitter(brightness=(0.5,1.5), contrast=(1), saturation=(0.5,1.5), hue=(-0.1,0.1)) --> values can be changed
     transform_train = transforms.Compose([
             transforms.RandomResizedCrop(args.input_size, scale=(0.2, 1.0), interpolation=3),  # 3 is bicubic
             transforms.RandomHorizontalFlip(),
