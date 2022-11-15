@@ -60,11 +60,20 @@ def get_args_parser():
     parser.add_argument('--drop_path', type=float, default=0.1, metavar='PCT',
                         help='Drop path rate (default: 0.1)')
 
-    parser.add_argument('--encoder_dim', type = int, default= 768,
-                        help = 'Encoder dimension')
+    parser.add_argument('--encoder_dim', default = 768, type = int,
+                        help='The encoder dimension')
+
+    parser.add_argument('--encoder_depth', default = 12, type = int,
+                        help='The encoder depth')
     
-    parser.add_argument('--encoder_depth', type = int, default= 12,
-                        help = 'Encoder depth')
+    ###################################################################
+    # Not used for anything in the code. However, it is used for wandb output
+    parser.add_argument('--decoder_dim', default = 512, type = int,
+                        help='The decoder dimension')
+    
+    parser.add_argument('--decoder_depth', default = 8, type = int,
+                        help='The decoder depth')
+    ###################################################################
 
     # Optimizer parameters
     parser.add_argument('--clip_grad', type=float, default=None, metavar='NORM',
@@ -171,7 +180,8 @@ def main(args):
     wandb.init(
         project="DL_advanced_mae",
         config=args,
-        sync_tensorboard=True
+        sync_tensorboard=True,
+        name=f'ft/dec_depth:{args.decoder_depth}/dec_dim:{args.decoder_dim}'
     )
 
     print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
@@ -355,10 +365,10 @@ def main(args):
                         'epoch': epoch,
                         'n_parameters': n_parameters}
         
-        """wandb.log({**{f'train_{k}': v for k, v in train_stats.items()},
+        wandb.log({**{f'train_{k}': v for k, v in train_stats.items()},
                         **{f'test_{k}': v for k, v in test_stats.items()},
                         'epoch': epoch,
-                        'n_parameters': n_parameters})"""
+                        'n_parameters': n_parameters})
 
         if args.output_dir and misc.is_main_process():
             if log_writer is not None:

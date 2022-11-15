@@ -124,7 +124,8 @@ def main(args):
     wandb.init(
         project="DL_advanced_mae",
         config=args,
-        sync_tensorboard=True
+        sync_tensorboard=True,
+        name = f'pt/dec_depth:{args.decoder_depth}/dec_dim:{args.decoder_dim}'
     )
 
     print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
@@ -234,8 +235,8 @@ def main(args):
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                         'epoch': epoch,}
         
-        """wandb.log({**{f'train_{k}': v for k, v in train_stats.items()},
-                        'epoch': epoch,})"""
+        wandb.log({**{f'train_{k}': v for k, v in train_stats.items()},
+                        'epoch': epoch,})
 
         if args.output_dir and misc.is_main_process():
             if log_writer is not None:
