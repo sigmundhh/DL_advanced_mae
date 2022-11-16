@@ -1,0 +1,4 @@
+
+To be able to train off line on cloud opne jupyter notebook with following in the gcloud terminal:
+  nohup jupyter notebook
+Then one can close the window etc.
