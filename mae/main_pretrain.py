@@ -36,7 +36,6 @@ from engine_pretrain import train_one_epoch
 
 import wandb
 
-
 def get_args_parser():
     parser = argparse.ArgumentParser('MAE pre-training', add_help=False)
     parser.add_argument('--batch_size', default=64, type=int,
@@ -58,6 +57,18 @@ def get_args_parser():
     parser.add_argument('--norm_pix_loss', action='store_true',
                         help='Use (per-patch) normalized pixels as targets for computing loss')
     parser.set_defaults(norm_pix_loss=False)
+
+    parser.add_argument('--encoder_dim', default = 768, type = int,
+                        help='The encoder dimension')
+
+    parser.add_argument('--encoder_depth', default = 12, type = int,
+                        help='The encoder depth')
+    
+    parser.add_argument('--decoder_dim', default = 512, type = int,
+                        help='The decoder dimension')
+    
+    parser.add_argument('--decoder_depth', default = 8, type = int,
+                        help='The decoder depth')
 
     # Optimizer parameters
     parser.add_argument('--weight_decay', type=float, default=0.05,
@@ -108,12 +119,13 @@ def get_args_parser():
 
 def main(args):
     misc.init_distributed_mode(args)
-    
+
     # WandB init
     wandb.init(
         project="DL_advanced_mae",
         config=args,
-        sync_tensorboard=True
+        sync_tensorboard=True,
+        name = f'pt/dec_depth:{args.decoder_depth}/dec_dim:{args.decoder_dim}'
     )
 
     print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
@@ -129,6 +141,18 @@ def main(args):
     cudnn.benchmark = True
 
     # simple augmentation
+    # Notes on data augmentation:
+    # 1. size = args.input_size is how big the resulted image should be (i.e. the input size). It is logical
+    #    that this value should be constant for all the inputs
+    # 2. scale = (0.2, 1.0) is the random scale part of the data augmentation. It is a relative number. So e.g.
+    #    0.2 mean 20% of the image and 1.0 means 100% of the image. The scale takes a value in between these numbers
+    #    all the time meaning we get random size. However, these are then upsamples to get the 'size'. If we want to
+    #    to have a test on this and we want the fixed size data augmentation we should do the scale (x,x). Where x
+    #    should be a constant and decided up infront.
+    # 3. RandomHorizontalFlip basically flips the images upside down.
+    # The example in https://www.tutorialspoint.com/pytorch-torchvision-transforms-randomresizedcrop is intuitive
+    # To add color jitter should be as simple as:
+    #   transforms.ColorJitter(brightness=(0.5,1.5), contrast=(1), saturation=(0.5,1.5), hue=(-0.1,0.1)) --> values can be changed
     transform_train = transforms.Compose([
             transforms.RandomResizedCrop(args.input_size, scale=(0.2, 1.0), interpolation=3),  # 3 is bicubic
             transforms.RandomHorizontalFlip(),
@@ -162,7 +186,7 @@ def main(args):
     )
     
     # define the model
-    model = models_mae.__dict__[args.model](norm_pix_loss=args.norm_pix_loss)
+    model = models_mae.__dict__[args.model](embed_dim = args.encoder_dim, depth=args.encoder_depth, decoder_embed_dim=args.decoder_dim, decoder_depth= args.decoder_depth,norm_pix_loss=args.norm_pix_loss)
 
     model.to(device)
 
@@ -211,8 +235,8 @@ def main(args):
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                         'epoch': epoch,}
         
-        """wandb.log({**{f'train_{k}': v for k, v in train_stats.items()},
-                        'epoch': epoch,})"""
+        wandb.log({**{f'train_{k}': v for k, v in train_stats.items()},
+                        'epoch': epoch,})
 
         if args.output_dir and misc.is_main_process():
             if log_writer is not None:
@@ -224,7 +248,6 @@ def main(args):
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
     wandb.finish()
-
 
 if __name__ == '__main__':
     args = get_args_parser()

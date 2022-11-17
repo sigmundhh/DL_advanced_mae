@@ -38,12 +38,15 @@ import models_vit
 
 from engine_finetune import train_one_epoch, evaluate
 
+import wandb
 
 def get_args_parser():
     parser = argparse.ArgumentParser('MAE fine-tuning for image classification', add_help=False)
     parser.add_argument('--batch_size', default=64, type=int,
                         help='Batch size per GPU (effective batch size is batch_size * accum_iter * # gpus')
+    
     parser.add_argument('--epochs', default=50, type=int)
+    
     parser.add_argument('--accum_iter', default=1, type=int,
                         help='Accumulate gradient iterations (for increasing the effective batch size under memory constraints)')
 
@@ -56,6 +59,21 @@ def get_args_parser():
 
     parser.add_argument('--drop_path', type=float, default=0.1, metavar='PCT',
                         help='Drop path rate (default: 0.1)')
+
+    parser.add_argument('--encoder_dim', default = 768, type = int,
+                        help='The encoder dimension')
+
+    parser.add_argument('--encoder_depth', default = 12, type = int,
+                        help='The encoder depth')
+    
+    ###################################################################
+    # Not used for anything in the code. However, it is used for wandb output
+    parser.add_argument('--decoder_dim', default = 512, type = int,
+                        help='The decoder dimension')
+    
+    parser.add_argument('--decoder_depth', default = 8, type = int,
+                        help='The decoder depth')
+    ###################################################################
 
     # Optimizer parameters
     parser.add_argument('--clip_grad', type=float, default=None, metavar='NORM',
@@ -158,6 +176,14 @@ def get_args_parser():
 def main(args):
     misc.init_distributed_mode(args)
 
+    # WandB init
+    wandb.init(
+        project="DL_advanced_mae",
+        config=args,
+        sync_tensorboard=True,
+        name=f'ft/dec_depth:{args.decoder_depth}/dec_dim:{args.decoder_dim}'
+    )
+
     print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
     print("{}".format(args).replace(', ', ',\n'))
 
@@ -228,6 +254,8 @@ def main(args):
         num_classes=args.nb_classes,
         drop_path_rate=args.drop_path,
         global_pool=args.global_pool,
+        embed_dim = args.encoder_dim,
+        depth = args.encoder_depth,
     )
 
     if args.finetune and not args.eval:
@@ -336,6 +364,11 @@ def main(args):
                         **{f'test_{k}': v for k, v in test_stats.items()},
                         'epoch': epoch,
                         'n_parameters': n_parameters}
+        
+        wandb.log({**{f'train_{k}': v for k, v in train_stats.items()},
+                        **{f'test_{k}': v for k, v in test_stats.items()},
+                        'epoch': epoch,
+                        'n_parameters': n_parameters})
 
         if args.output_dir and misc.is_main_process():
             if log_writer is not None:
@@ -346,7 +379,7 @@ def main(args):
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
-
+    wandb.finish()
 
 if __name__ == '__main__':
     args = get_args_parser()
