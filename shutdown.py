@@ -2,7 +2,7 @@ import os
 import sys
 
 def shutdown(mins=5):
-  os.system("sudo /usr/sbin/shutdown +" + str(mins) +" poweroff scheduled")
+  os.system("sudo /usr/sbin/shutdown " + str(mins) +" poweroff scheduled")
 
 def shutdown_cancel():
   print("Cancelling shutdown...")
