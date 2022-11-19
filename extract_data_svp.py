@@ -8,13 +8,12 @@ img_width = 224
 
 def gen_image_data(path, files, height, width):
   image_data = []
-  t = 0
+
   for f in files:
     dir = path + "/"
     image_string = tf.io.read_file(dir + f)
     image_decoded = tf.image.decode_jpeg(image_string)
     image_resized = tf.image.resize(image_decoded, [height, width])
-    t+=1
 
     if image_resized.shape[2] == 1:
       image_resized = tf.image.grayscale_to_rgb(image_resized)
