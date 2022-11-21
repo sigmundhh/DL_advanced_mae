@@ -15,6 +15,7 @@ import numpy as np
 import os
 import time
 from pathlib import Path
+import copy
 
 import torch
 import torch.backends.cudnn as cudnn
@@ -34,7 +35,7 @@ import models_mae
 
 from engine_pretrain import train_one_epoch
 
-#import wandb
+import wandb
 
 def get_args_parser():
     parser = argparse.ArgumentParser('MAE pre-training', add_help=False)
@@ -114,13 +115,17 @@ def get_args_parser():
     parser.add_argument('--dist_url', default='env://',
                         help='url used to set up distributed training')
 
+    # Arguments for updating encoder more frequent than the decoder
+    parser.add_argument('--update_freq', default=1, type=int,
+                        help='In each epoch to update the decoder')
+    parser.add_argument('--test_update', default=False, type=bool,
+                        help='To see whether the decoder parameters are updated')
     return parser
 
 
 def main(args):
     misc.init_distributed_mode(args)
 
-    """
     # WandB init
     wandb.init(
         project="DL_advanced_mae",
@@ -128,7 +133,7 @@ def main(args):
         sync_tensorboard=True,
         name = f'pt/dec_depth:{args.decoder_depth}/dec_dim:{args.decoder_dim}'
     )
-    """
+
 
     print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
     print("{}".format(args).replace(', ', ',\n'))
@@ -210,27 +215,44 @@ def main(args):
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu], find_unused_parameters=True)
         model_without_ddp = model.module
     
-    # following timm: set wd as 0 for bias and norm layers
-    """
-    print(model.patch_embed)
-    print('-'*30)
-    print(model.blocks)
-    list(model_without_ddp.patch_embed) + 
-    """
-    param_groups_patch_embed = optim_factory.add_weight_decay(model_without_ddp.patch_embed, args.weight_decay)
-    param_groups_embed_blocks = optim_factory.add_weight_decay(model_without_ddp.blocks, args.weight_decay)
-    param_groups = list(param_groups_patch_embed) + list(param_groups_embed_blocks)
-    optimizer = torch.optim.AdamW(param_groups, lr=args.lr, betas=(0.9, 0.95))
-    #print(optimizer)
-    loss_scaler = NativeScaler()
-
-    misc.load_model(args=args, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler)
-
-    old_model = model
-
     print(f"Start training for {args.epochs} epochs")
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
+        if epoch%args.update_freq != 0:
+            for p in model_without_ddp.decoder_blocks.parameters():                    
+                p.requires_grad = False
+            for p in model_without_ddp.decoder_embed.parameters():
+                p.requires_grad = False
+            for p in model_without_ddp.decoder_norm.parameters():
+                p.requires_grad = False
+            for p in model_without_ddp.decoder_pred.parameters():
+                p.requires_grad = False
+
+            param_groups = optim_factory.add_weight_decay(model_without_ddp, args.weight_decay)
+            optimizer = torch.optim.AdamW(param_groups, lr=args.lr, betas=(0.9, 0.95))
+            loss_scaler = NativeScaler()
+
+            misc.load_model(args=args, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler)
+            
+            old_model = copy.deepcopy(model)
+        else:
+            for p in model_without_ddp.decoder_blocks.parameters():                    
+                p.requires_grad = True
+            for p in model_without_ddp.decoder_embed.parameters():
+                p.requires_grad = True
+            for p in model_without_ddp.decoder_norm.parameters():
+                p.requires_grad = True
+            for p in model_without_ddp.decoder_pred.parameters():
+                p.requires_grad = True
+
+            param_groups = optim_factory.add_weight_decay(model_without_ddp, args.weight_decay)
+            optimizer = torch.optim.AdamW(param_groups, lr=args.lr, betas=(0.9, 0.95))
+            loss_scaler = NativeScaler()
+
+            misc.load_model(args=args, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler)
+
+            old_model = copy.deepcopy(model)
+
         if args.distributed:
             data_loader_train.sampler.set_epoch(epoch)
         train_stats = train_one_epoch(
@@ -247,34 +269,34 @@ def main(args):
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                         'epoch': epoch,}
         
-        """
         wandb.log({**{f'train_{k}': v for k, v in train_stats.items()},
                         'epoch': epoch,})
-        """
-
+        
         if args.output_dir and misc.is_main_process():
             if log_writer is not None:
                 log_writer.flush()
             with open(os.path.join(args.output_dir, "log.txt"), mode="a", encoding="utf-8") as f:
                 f.write(json.dumps(log_stats) + "\n")
-
-        i = 0
-        for p_new in model.parameters():
-            j = 0
-            for p_old in old_model.parameters():
-                if i == j:
-                    print('-'*30)
-                    a = torch.norm(p_new.data - p_old.data)
-                    print(a)
-                j += 1
-            i += 1            
-        fvdfbdf
-
+        
+        if args.test_update:
+            i = 0
+            for p_new in model.parameters():
+                j = 0
+                for p_old in old_model.parameters():
+                    if i == j:
+                        print(i)
+                        #print(p_new.data)
+                        #print(p_old.data)
+                        a = torch.norm(p_new.data - p_old.data)
+                        print(a)
+                        print('-'*30)
+                    j += 1
+                i += 1  
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
-    #wandb.finish()
+    wandb.finish() 
 
 if __name__ == '__main__':
     args = get_args_parser()
