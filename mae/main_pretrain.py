@@ -120,6 +120,10 @@ def get_args_parser():
                         help='In each epoch to update the decoder')
     parser.add_argument('--test_update', default=False, type=bool,
                         help='To see whether the decoder parameters are updated')
+    
+    # If results should be logged to wandb
+    parser.add_argument('--log_wandb', default=True, type=bool,
+                    help='If the results should be logged to wandb')
     return parser
 
 
@@ -127,12 +131,13 @@ def main(args):
     misc.init_distributed_mode(args)
 
     # WandB init
-    wandb.init(
-        project="DL_advanced_mae",
-        config=args,
-        sync_tensorboard=True,
-        name = f'pt/dec_depth:{args.decoder_depth}/dec_dim:{args.decoder_dim}'
-    )
+    if args.log_wandb:
+        wandb.init(
+            project="DL_advanced_mae",
+            config=args,
+            sync_tensorboard=True,
+            name = f'pt/dec_depth:{args.decoder_depth}/dec_dim:{args.decoder_dim}'
+        )
 
 
     print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
@@ -269,8 +274,9 @@ def main(args):
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                         'epoch': epoch,}
         
-        wandb.log({**{f'train_{k}': v for k, v in train_stats.items()},
-                        'epoch': epoch,})
+        if args.log_wandb:
+            wandb.log({**{f'train_{k}': v for k, v in train_stats.items()},
+                            'epoch': epoch,})
         
         if args.output_dir and misc.is_main_process():
             if log_writer is not None:
@@ -296,7 +302,8 @@ def main(args):
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
-    wandb.finish() 
+    if args.log_wandb:
+        wandb.finish() 
 
 if __name__ == '__main__':
     args = get_args_parser()
