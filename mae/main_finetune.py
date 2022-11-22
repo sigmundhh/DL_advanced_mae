@@ -73,6 +73,9 @@ def get_args_parser():
     
     parser.add_argument('--decoder_depth', default = 8, type = int,
                         help='The decoder depth')
+    
+    parser.add_argument('--mask_ratio', default=0.75, type=float,
+                        help='Masking ratio (percentage of removed patches).'
     ###################################################################
 
     # Optimizer parameters
@@ -181,7 +184,7 @@ def main(args):
         project="DL_advanced_mae",
         config=args,
         sync_tensorboard=True,
-        name=f'ft/dec_depth:{args.decoder_depth}/dec_dim:{args.decoder_dim}'
+        name = f'ft/mask_ratio:{args.mask_ratio}'
     )
 
     print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
