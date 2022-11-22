@@ -125,7 +125,7 @@ def main(args):
         project="DL_advanced_mae",
         config=args,
         sync_tensorboard=True,
-        name = f'pt/dec_depth:{args.decoder_depth}/dec_dim:{args.decoder_dim}'
+        name = f'pt/mask_ratio:{args.mask_ratio}'
     )
 
     print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
