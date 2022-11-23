@@ -13,9 +13,12 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
 import models_cnn_pretrain
+import timm.optim.optim_factory as optim_factory
 
 import util.misc as misc
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
+
+from engine_pretrain import train_one_epoch
 
 def get_args_parser():
     parser = argparse.ArgumentParser('CNN pre-training', add_help=False)

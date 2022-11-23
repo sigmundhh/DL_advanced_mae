@@ -15,8 +15,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-#device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-
 class CNN(nn.Module):
     """ Masked Autoencoder with CNN backbone
     """
@@ -29,18 +27,22 @@ class CNN(nn.Module):
         self.pool = nn.MaxPool2d(2, 2)
         self.conv2 = nn.Conv2d(6, 16, 5)
         # Linear(in_features, out_features, bias=True, ...) 
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)
+        self.fc1 = nn.Linear(16 * 53 * 53, 120)
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, 10)
 
-    def forward(self, x):
+    def forward(self, x, mask_ratio=0.75): # def forward(self, img, masking_ratio)
+        # x = random_mask(x, masking_ratio) # we should randomly mask x and I believe that should be it. 
+
+        # change the network so we get encoder/decoder arch. 
         x = self.pool(F.relu(self.conv1(x)))
         x = self.pool(F.relu(self.conv2(x)))
         x = torch.flatten(x, 1) # flatten all dimensions except batch
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
-        return torch.mean(x)
+        # loss = loss_forward(x, img)
+        return torch.mean(x), 5, 5 # return loss
 
 def cnn_model(**kwargs):
     model = CNN(
