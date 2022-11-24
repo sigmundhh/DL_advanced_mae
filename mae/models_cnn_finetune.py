@@ -84,7 +84,7 @@ class CNN(nn.Module):
         # ------------------------------------------------------------------------------------
         # -----------------------DECODER------------------------------------------------------
         self.dec_1 = nn.Sequential(
-            nn.Upsample(scale_factor=2, mode='bilinear'),   # 14x14x512 --> (H,W,C) format
+            nn.Upsample(scale_factor=2, mode='bilinear'),   # 14x14x512
             nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1),   # 14x14x512
             nn.BatchNorm2d(512),
             nn.ReLU()
@@ -142,85 +142,123 @@ class CNN(nn.Module):
             #nn.BatchNorm2d(3), don't know if this is a good idea to have or not??
             nn.ReLU()  # I think this is good since pixel values should be >=0
         )
-        # -------------------------------------------------------------------------------------
-    
-    def random_mask(imgs, mask_ratio, patch_size):
+
+        
+        """
+        self.fc = nn.Sequential(
+            nn.Dropout(0.5),
+            nn.Linear(7*7*512, 4096),
+            nn.ReLU())
+        self.fc1 = nn.Sequential(
+            nn.Dropout(0.5),
+            nn.Linear(4096, 4096),
+            nn.ReLU())
+        self.fc2= nn.Sequential(
+            nn.Linear(4096, num_classes))
+        """
+    """ 
+    def forward(self, x):
+        out = self.layer1(x)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.layer4(out)
+        out = self.layer5(out)
+        out = self.layer6(out)
+        out = self.layer7(out)
+        out = self.layer8(out)
+        out = self.layer9(out)
+        out = self.layer10(out)
+        out = self.layer11(out)
+        out = self.layer12(out)
+        out = self.layer13(out)
+        out = out.reshape(out.size(0), -1)
+        out = self.fc(out)
+        out = self.fc1(out)
+        out = self.fc2(out)
+        return out
+    """
+    def random_mask(imgs, masking_ratio):
         "Takes in the images and randomly masks them. Then it returns masked imgs"
-        # imgs = [BS, C, H, W] 
-        # random_tensor = create a radnom tensor of shape (BS, H//patch_size, W//patch_size)
-        # argsort = argsort the random vector in random_tensor [1, 2] dimensions (except Batch dimension)
-        # keep the '1-masking_ratio' ratio of the smallest/biggest ones.  
-        # make the random_tensor into T-F tensor
-        # and apply that tensor to the imgs
-        N, c, h, w = imgs.shape
-        h_patch = h//patch_size   # 2
-        w_patch = w//patch_size   # 2
-        L = h_patch * w_patch     # total number of patches
-        
-        len_keep = int(L * (1 - mask_ratio))  # number of patches to keep of the total
+        pass
 
-        noise = torch.rand(N, L, device=imgs.device)  # noise in [0, 1]
-        ids_shuffle = torch.argsort(noise, dim=1)  # ascend: small is keep, large is remove
-        ids_restore = torch.argsort(ids_shuffle, dim=1)
-        
-        # generate the binary mask: 0 is keep, 1 is remove
-        mask = torch.zeros([N, L], device=imgs.device)
-        mask[:, :len_keep] = 1.
-        # unshuffle to get the binary mask
-        mask = torch.gather(mask, dim=1, index=ids_restore)   # [bs, (h_patch x w_patch)]
+    def forward_cnn(self, imgs, mask_ratio):
+        masked_imgs = self.random_mask(imgs, mask_ratio) # we should randomly mask x and I believe that should be it. 
 
-        # resize mask
-        mask_3d = torch.reshape(mask, shape = (N, h_patch, w_patch))
-        
-        # add the color channels to mask tensor
-        mask_3d = mask_3d[:, None, :, :]
-        mask_colored = mask_3d.repeat(1, 3, 1, 1)
+        # ---------------ENCODER SPECIFICS -----------------
+        x = self.pool(F.relu(self.conv1(masked_imgs)))
+        x = self.pool(F.relu(self.conv2(x)))
+        x = torch.flatten(x, 1) # flatten all dimensions except batch
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        # ----------------------------------------------------
 
-        mask_colored_increased = torch.repeat_interleave(mask_colored, patch_size, dim=2)
-        batch_mask = torch.repeat_interleave(mask_colored_increased, patch_size, dim=3)
+        # Maybe something here in the middle
 
-        masked_imgs = imgs * batch_mask
-        return masked_imgs
+        # ---------------DECODER SPECIFICS -----------------
+        # Something something 
+        # The output should be the reconstructed image.
 
-    def forward_encoder(self, masked_imgs):
-        out = self.enc_1(masked_imgs)
-        out = self.enc_2(out)
-        out = self.enc_3(out)
-        out = self.enc_4(out)
-        out = self.enc_5(out)
-        out = self.enc_6(out)
-        out = self.enc_7(out)
-        out = self.enc_8(out)
-        out = self.enc_9(out)
-        out = self.enc_10(out)
-        out = self.enc_11(out)
-        out = self.enc_12(out)
-        latent = self.enc_13(out)   # Should be of shape BSx512x7x7
-        return latent
-
-    def forward_decoder(self, latent):
-        out = self.dec_1(latent)
-        out = self.dec_2(out)
-        out = self.dec_3(out)
-        out = self.dec_4(out)
-        out = self.dec_5(out)
-        out = self.dec_6(out)
-        out = self.dec_7(out)
-        out = self.dec_8(out)
-        out = self.dec_9(out)
-        pred_imgs = self.dec_10(out)
-        return pred_imgs
-
-    def loss_forward(self, imgs, preds):
-        simple_loss = torch.mean((imgs - preds) ** 2) # do not take into consideration about the masked/not masked parts
-        return simple_loss
+    def loss_forward(imgs, preds, mask):
+        pass
 
     def forward(self, imgs, mask_ratio=0.75): # def forward(self, img, masking_ratio)
+        preds, masks = self.forward_cnn(self, imgs, mask_ratio)
+        loss = self.loss_forward(imgs, preds, masks)
+        return loss, preds, masks # return loss
+
+
+
+
+
+
+"""
+class CNN(nn.Module):
+    " Masked Autoencoder with CNN backbone
+    "    
+    def __init__(self, patch_size, **kwargs):
+        super().__init__()
+        self.patch_size = patch_size
+        # Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, ....)
+        self.conv1 = nn.Conv2d(3, 6, 5)
+        # MaxPool2d(kernel_size, stride=None, padding=0, ...)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.conv2 = nn.Conv2d(6, 16, 5)
+        # Linear(in_features, out_features, bias=True, ...) 
+        self.fc1 = nn.Linear(16 * 53 * 53, 120)
+        self.fc2 = nn.Linear(120, 84)
+        self.fc3 = nn.Linear(84, 10)
+
+    def random_mask(imgs, masking_ratio):
+        "Takes in the images and randomly masks them. Then it returns masked imgs"
+        pass
+
+    def forward_cnn(self, imgs, mask_ratio):
         masked_imgs = self.random_mask(imgs, mask_ratio) # we should randomly mask x and I believe that should be it. 
-        latent = self.forward_encoder(self, masked_imgs)  
-        pred_imgs = self.forward_decoder(self, latent)   # Should ideally reconstruct the images
-        loss = self.loss_forward(self, imgs, pred_imgs)
-        return loss #, preds, masks # return loss
+
+        # ---------------ENCODER SPECIFICS -----------------
+        x = self.pool(F.relu(self.conv1(masked_imgs)))
+        x = self.pool(F.relu(self.conv2(x)))
+        x = torch.flatten(x, 1) # flatten all dimensions except batch
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        # ----------------------------------------------------
+
+        # Maybe something here in the middle
+
+        # ---------------DECODER SPECIFICS -----------------
+        # Something something 
+        # The output should be the reconstructed image.
+
+    def loss_forward(imgs, preds, mask):
+        pass
+
+    def forward(self, imgs, mask_ratio=0.75): # def forward(self, img, masking_ratio)
+        preds, masks = self.forward_cnn(self, imgs, mask_ratio)
+        loss = self.loss_forward(imgs, preds, masks)
+        return loss, preds, masks # return loss
+"""
 
 def cnn_model(**kwargs):
     model = CNN(
@@ -228,55 +266,5 @@ def cnn_model(**kwargs):
     return model
 
 # set recommended archs
-# cnn = cnn_model()
-
-
-def random_mask(imgs, mask_ratio, patch_size):
-    "Takes in the images and randomly masks them. Then it returns masked imgs"
-    # imgs = [BS, C, H, W] 
-    # random_tensor = create a radnom tensor of shape (BS, H//patch_size, W//patch_size)
-    # argsort = argsort the random vector in random_tensor [1, 2] dimensions (except Batch dimension)
-    # keep the '1-masking_ratio' ratio of the smallest/biggest ones.  
-    # make the random_tensor into T-F tensor
-    # and apply that tensor to the imgs
-    N, c, h, w = imgs.shape
-    h_patch = h//patch_size   # 2
-    w_patch = w//patch_size   # 2
-    L = h_patch * w_patch     # total number of patches
-    
-    len_keep = int(L * (1 - mask_ratio))  # number of patches to keep of the total
-
-    noise = torch.rand(N, L, device=imgs.device)  # noise in [0, 1]
-    ids_shuffle = torch.argsort(noise, dim=1)  # ascend: small is keep, large is remove
-    ids_restore = torch.argsort(ids_shuffle, dim=1)
-    
-    # generate the binary mask: 0 is keep, 1 is remove
-    mask = torch.zeros([N, L], device=imgs.device)
-    mask[:, :len_keep] = 1.
-    # unshuffle to get the binary mask
-    mask = torch.gather(mask, dim=1, index=ids_restore)   # [bs, (h_patch x w_patch)]
-
-    # resize mask
-    mask_3d = torch.reshape(mask, shape = (N, h_patch, w_patch))
-    
-    # add the color channels to mask tensor
-    mask_3d = mask_3d[:, None, :, :]
-    mask_colored = mask_3d.repeat(1, 3, 1, 1)
-
-    mask_colored_increased = torch.repeat_interleave(mask_colored, patch_size, dim=2)
-    batch_mask = torch.repeat_interleave(mask_colored_increased, patch_size, dim=3)
-
-    masked_imgs = imgs * batch_mask
-
-    return masked_imgs
-
-patch_size = 2
-imgs = torch.rand(4, 3, 4, 4) 
-masking_ratio = 0.50
-
-print('imgs:', imgs)
-masked_imgs = random_mask(imgs, masking_ratio, patch_size)
-print('masked:', masked_imgs)
-
-
+cnn = cnn_model
 

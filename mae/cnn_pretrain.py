@@ -158,7 +158,6 @@ def main(args):
     # define the model
     #model = models_mae.__dict__[args.model](embed_dim = args.encoder_dim, depth=args.encoder_depth, decoder_embed_dim=args.decoder_dim, decoder_depth= args.decoder_depth,norm_pix_loss=args.norm_pix_loss)
     model = models_cnn_pretrain.__dict__['cnn']()
-    print(model)
 
     model.to(device)
 
