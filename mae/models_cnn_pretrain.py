@@ -144,7 +144,7 @@ class CNN(nn.Module):
         )
         # -------------------------------------------------------------------------------------
     
-    def random_mask(imgs, mask_ratio, patch_size):
+    def random_mask(self, imgs, mask_ratio, patch_size):
         "Takes in the images and randomly masks them. Then it returns masked imgs"
         # imgs = [BS, C, H, W] 
         # random_tensor = create a radnom tensor of shape (BS, H//patch_size, W//patch_size)
@@ -215,11 +215,11 @@ class CNN(nn.Module):
         simple_loss = torch.mean((imgs - preds) ** 2) # do not take into consideration about the masked/not masked parts
         return simple_loss
 
-    def forward(self, imgs, mask_ratio=0.75): # def forward(self, img, masking_ratio)
-        masked_imgs = self.random_mask(imgs, mask_ratio) # we should randomly mask x and I believe that should be it. 
-        latent = self.forward_encoder(self, masked_imgs)  
-        pred_imgs = self.forward_decoder(self, latent)   # Should ideally reconstruct the images
-        loss = self.loss_forward(self, imgs, pred_imgs)
+    def forward(self, imgs, mask_ratio=0.75, patch_size=16): # def forward(self, img, masking_ratio)
+        masked_imgs = self.random_mask(imgs, mask_ratio, patch_size) # we should randomly mask x and I believe that should be it. 
+        latent = self.forward_encoder(masked_imgs)  
+        pred_imgs = self.forward_decoder(latent)   # Should ideally reconstruct the images
+        loss = self.loss_forward(imgs, pred_imgs)
         return loss #, preds, masks # return loss
 
 def cnn_model(**kwargs):
@@ -228,55 +228,4 @@ def cnn_model(**kwargs):
     return model
 
 # set recommended archs
-# cnn = cnn_model()
-
-
-def random_mask(imgs, mask_ratio, patch_size):
-    "Takes in the images and randomly masks them. Then it returns masked imgs"
-    # imgs = [BS, C, H, W] 
-    # random_tensor = create a radnom tensor of shape (BS, H//patch_size, W//patch_size)
-    # argsort = argsort the random vector in random_tensor [1, 2] dimensions (except Batch dimension)
-    # keep the '1-masking_ratio' ratio of the smallest/biggest ones.  
-    # make the random_tensor into T-F tensor
-    # and apply that tensor to the imgs
-    N, c, h, w = imgs.shape
-    h_patch = h//patch_size   # 2
-    w_patch = w//patch_size   # 2
-    L = h_patch * w_patch     # total number of patches
-    
-    len_keep = int(L * (1 - mask_ratio))  # number of patches to keep of the total
-
-    noise = torch.rand(N, L, device=imgs.device)  # noise in [0, 1]
-    ids_shuffle = torch.argsort(noise, dim=1)  # ascend: small is keep, large is remove
-    ids_restore = torch.argsort(ids_shuffle, dim=1)
-    
-    # generate the binary mask: 0 is keep, 1 is remove
-    mask = torch.zeros([N, L], device=imgs.device)
-    mask[:, :len_keep] = 1.
-    # unshuffle to get the binary mask
-    mask = torch.gather(mask, dim=1, index=ids_restore)   # [bs, (h_patch x w_patch)]
-
-    # resize mask
-    mask_3d = torch.reshape(mask, shape = (N, h_patch, w_patch))
-    
-    # add the color channels to mask tensor
-    mask_3d = mask_3d[:, None, :, :]
-    mask_colored = mask_3d.repeat(1, 3, 1, 1)
-
-    mask_colored_increased = torch.repeat_interleave(mask_colored, patch_size, dim=2)
-    batch_mask = torch.repeat_interleave(mask_colored_increased, patch_size, dim=3)
-
-    masked_imgs = imgs * batch_mask
-
-    return masked_imgs
-
-patch_size = 2
-imgs = torch.rand(4, 3, 4, 4) 
-masking_ratio = 0.50
-
-print('imgs:', imgs)
-masked_imgs = random_mask(imgs, masking_ratio, patch_size)
-print('masked:', masked_imgs)
-
-
-
+cnn = cnn_model
