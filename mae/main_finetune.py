@@ -75,7 +75,7 @@ def get_args_parser():
                         help='The decoder depth')
     
     parser.add_argument('--mask_ratio', default=0.75, type=float,
-                        help='Masking ratio (percentage of removed patches).'
+                        help='Masking ratio (percentage of removed patches).')
     ###################################################################
 
     # Optimizer parameters
