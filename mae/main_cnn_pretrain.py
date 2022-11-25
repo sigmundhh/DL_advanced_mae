@@ -29,6 +29,8 @@ def get_args_parser():
                         help='Accumulate gradient iterations (for increasing the effective batch size under memory constraints)')
 
     # Model parameters
+    parser.add_argument('--model', default='cnn', type=str, metavar='MODEL',
+                        help='Name of model to train')
     parser.add_argument('--input_size', default=224, type=int,
                         help='images input size')
     parser.add_argument('--mask_ratio', default=0.75, type=float,
