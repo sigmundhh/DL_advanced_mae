@@ -160,8 +160,7 @@ def main(args):
     )
     
     # define the model
-    model = models_cnn_pretrain.__dict__['cnn']()
-
+    model = models_cnn_pretrain.__dict__[args.model]()
     model.to(device)
 
     model_without_ddp = model
