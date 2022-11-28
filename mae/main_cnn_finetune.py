@@ -23,7 +23,6 @@ from torch.utils.tensorboard import SummaryWriter
 
 import timm
 
-assert timm.__version__ == "0.3.2" # version check
 from timm.data.mixup import Mixup
 from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy
 
@@ -236,7 +235,7 @@ def main(args):
             prob=args.mixup_prob, switch_prob=args.mixup_switch_prob, mode=args.mixup_mode,
             label_smoothing=args.smoothing, num_classes=args.nb_classes)
     
-    model = models_cnn_finetune.__dict__[args.model](args.nb_classes) # Here the finetuning model is constructed. I believe it is just the model w/o weights
+    model = models_cnn_finetune.__dict__[args.model]() # Here the finetuning model is constructed. I believe it is just the model w/o weights
     if args.test_loading:
         init_model = copy.deepcopy(model)
 
@@ -248,6 +247,11 @@ def main(args):
 
         # load pre-trained model
         msg = model.load_state_dict(checkpoint_model, strict=False)  # load's the parameters as much as it overlaps
+        f = open("control.txt", "a")
+        for name, param in model.named_parameters():
+            f.write('\n' + str(name))
+            f.write('\n' + str(param))
+        f.close()
         print(msg)
 
         if args.test_loading:
