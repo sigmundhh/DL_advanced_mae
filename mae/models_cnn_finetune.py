@@ -70,7 +70,7 @@ class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
 
-        classes = self.nb_classes
+        classes = 1000
 
         # VGG 16 architecture
         self.enc_1 = nn.Sequential(
