@@ -34,7 +34,7 @@ from util.datasets import build_dataset
 from util.pos_embed import interpolate_pos_embed
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 
-import models_cnn_finetune
+import models_vit
 
 from engine_finetune import train_one_epoch, evaluate
 
@@ -59,9 +59,21 @@ def get_args_parser():
 
     parser.add_argument('--drop_path', type=float, default=0.1, metavar='PCT',
                         help='Drop path rate (default: 0.1)')
+
+    parser.add_argument('--encoder_dim', default = 768, type = int,
+                        help='The encoder dimension')
+
+    parser.add_argument('--encoder_depth', default = 12, type = int,
+                        help='The encoder depth')
     
     ###################################################################
     # Not used for anything in the code. However, it is used for wandb output
+    parser.add_argument('--decoder_dim', default = 512, type = int,
+                        help='The decoder dimension')
+    
+    parser.add_argument('--decoder_depth', default = 8, type = int,
+                        help='The decoder depth')
+    
     parser.add_argument('--mask_ratio', default=0.75, type=float,
                         help='Masking ratio (percentage of removed patches).')
     ###################################################################
@@ -166,8 +178,7 @@ def get_args_parser():
 
 def main(args):
     misc.init_distributed_mode(args)
-    
-    """
+
     # WandB init
     wandb.init(
         project="DL_advanced_mae",
@@ -175,7 +186,6 @@ def main(args):
         sync_tensorboard=True,
         name = f'ft/mask_ratio:{args.mask_ratio}'
     )
-    """
 
     print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
     print("{}".format(args).replace(', ', ',\n'))
@@ -243,7 +253,7 @@ def main(args):
             prob=args.mixup_prob, switch_prob=args.mixup_switch_prob, mode=args.mixup_mode,
             label_smoothing=args.smoothing, num_classes=args.nb_classes)
     
-    model = models_cnn_finetune.__dict__[args.model](
+    model = models_vit.__dict__[args.model](
         num_classes=args.nb_classes,
         drop_path_rate=args.drop_path,
         global_pool=args.global_pool,
@@ -256,6 +266,14 @@ def main(args):
 
         print("Load pre-trained checkpoint from: %s" % args.finetune)
         checkpoint_model = checkpoint['model']  # extract the pretreained weights from a dict. 
+        state_dict = model.state_dict() 
+        for k in ['head.weight', 'head.bias']:
+            if k in checkpoint_model and checkpoint_model[k].shape != state_dict[k].shape:
+                print(f"Removing key {k} from pretrained checkpoint")
+                del checkpoint_model[k]
+
+        # interpolate position embedding
+        interpolate_pos_embed(model, checkpoint_model)
 
         # load pre-trained model
         msg = model.load_state_dict(checkpoint_model, strict=False)
@@ -265,6 +283,9 @@ def main(args):
             assert set(msg.missing_keys) == {'head.weight', 'head.bias', 'fc_norm.weight', 'fc_norm.bias'}
         else:
             assert set(msg.missing_keys) == {'head.weight', 'head.bias'}
+
+        # manually initialize fc layer
+        trunc_normal_(model.head.weight, std=2e-5)
 
     model.to(device)
 

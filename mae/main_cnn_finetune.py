@@ -23,25 +23,22 @@ from torch.utils.tensorboard import SummaryWriter
 
 import timm
 
-assert timm.__version__ == "0.3.2" # version check
-from timm.models.layers import trunc_normal_
 from timm.data.mixup import Mixup
 from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy
 
 import util.lr_decay as lrd
 import util.misc as misc
 from util.datasets import build_dataset
-from util.pos_embed import interpolate_pos_embed
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 
 import models_cnn_finetune
 
 from engine_finetune import train_one_epoch, evaluate
 
-import wandb
+import copy
 
 def get_args_parser():
-    parser = argparse.ArgumentParser('MAE fine-tuning for image classification', add_help=False)
+    parser = argparse.ArgumentParser('MAE with CNN backbone fine-tuning for image classification', add_help=False)
     parser.add_argument('--batch_size', default=64, type=int,
                         help='Batch size per GPU (effective batch size is batch_size * accum_iter * # gpus')
     
@@ -51,7 +48,7 @@ def get_args_parser():
                         help='Accumulate gradient iterations (for increasing the effective batch size under memory constraints)')
 
     # Model parameters
-    parser.add_argument('--model', default='vit_large_patch16', type=str, metavar='MODEL',
+    parser.add_argument('--model', default='cnn', type=str, metavar='MODEL',
                         help='Name of model to train')
 
     parser.add_argument('--input_size', default=224, type=int,
@@ -60,12 +57,6 @@ def get_args_parser():
     parser.add_argument('--drop_path', type=float, default=0.1, metavar='PCT',
                         help='Drop path rate (default: 0.1)')
     
-    ###################################################################
-    # Not used for anything in the code. However, it is used for wandb output
-    parser.add_argument('--mask_ratio', default=0.75, type=float,
-                        help='Masking ratio (percentage of removed patches).')
-    ###################################################################
-
     # Optimizer parameters
     parser.add_argument('--clip_grad', type=float, default=None, metavar='NORM',
                         help='Clip gradient norm (default: None, no clipping)')
@@ -122,8 +113,6 @@ def get_args_parser():
                         help='finetune from checkpoint')
     parser.add_argument('--global_pool', action='store_true')
     parser.set_defaults(global_pool=True)
-    parser.add_argument('--cls_token', action='store_false', dest='global_pool',
-                        help='Use class token instead of global pool for classification')
 
     # Dataset parameters
     parser.add_argument('--data_path', default='/datasets01/imagenet_full_size/061417/', type=str,
@@ -161,21 +150,24 @@ def get_args_parser():
     parser.add_argument('--dist_url', default='env://',
                         help='url used to set up distributed training')
 
+    ##
+    parser.add_argument('--log_wandb', default=True, type=bool)
+    parser.add_argument('--test_loading', default=False, type=bool)
     return parser
 
 
 def main(args):
     misc.init_distributed_mode(args)
     
-    """
-    # WandB init
-    wandb.init(
-        project="DL_advanced_mae",
-        config=args,
-        sync_tensorboard=True,
-        name = f'ft/mask_ratio:{args.mask_ratio}'
-    )
-    """
+    if args.log_wandb:
+        import wandb
+        # WandB init
+        wandb.init(
+            project="DL_advanced_mae",
+            config=args,
+            sync_tensorboard=True,
+            name = f'ft/CNN_approach'
+        )
 
     print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
     print("{}".format(args).replace(', ', ',\n'))
@@ -243,13 +235,9 @@ def main(args):
             prob=args.mixup_prob, switch_prob=args.mixup_switch_prob, mode=args.mixup_mode,
             label_smoothing=args.smoothing, num_classes=args.nb_classes)
     
-    model = models_cnn_finetune.__dict__[args.model](
-        num_classes=args.nb_classes,
-        drop_path_rate=args.drop_path,
-        global_pool=args.global_pool,
-        embed_dim = args.encoder_dim,
-        depth = args.encoder_depth,
-    ) # Here the finetuning model is constructed. I believe it is just the model w/o weights
+    model = models_cnn_finetune.__dict__[args.model]() # Here the finetuning model is constructed. I believe it is just the model w/o weights
+    if args.test_loading:
+        init_model = copy.deepcopy(model)
 
     if args.finetune and not args.eval:
         checkpoint = torch.load(args.finetune, map_location='cpu') #loading the pretraained weights
@@ -258,13 +246,21 @@ def main(args):
         checkpoint_model = checkpoint['model']  # extract the pretreained weights from a dict. 
 
         # load pre-trained model
-        msg = model.load_state_dict(checkpoint_model, strict=False)
+        msg = model.load_state_dict(checkpoint_model, strict=False)  # load's the parameters as much as it overlaps
         print(msg)
 
-        if args.global_pool:
-            assert set(msg.missing_keys) == {'head.weight', 'head.bias', 'fc_norm.weight', 'fc_norm.bias'}
-        else:
-            assert set(msg.missing_keys) == {'head.weight', 'head.bias'}
+        if args.test_loading:
+            i = 0
+            for p_new in model.parameters():
+                j = 0
+                for p_old in init_model.parameters():
+                    if i == j:
+                        print(i)
+                        norm = torch.norm(p_new.data - p_old.data)
+                        print(norm)
+                        print('-'*50)
+                    j += 1
+                i += 1  
 
     model.to(device)
 
@@ -291,7 +287,6 @@ def main(args):
 
     # build optimizer with layer-wise lr decay (lrd)
     param_groups = lrd.param_groups_lrd(model_without_ddp, args.weight_decay,
-        no_weight_decay_list=model_without_ddp.no_weight_decay(),
         layer_decay=args.layer_decay
     )
     optimizer = torch.optim.AdamW(param_groups, lr=args.lr)
@@ -346,11 +341,11 @@ def main(args):
                         **{f'test_{k}': v for k, v in test_stats.items()},
                         'epoch': epoch,
                         'n_parameters': n_parameters}
-        
-        wandb.log({**{f'train_{k}': v for k, v in train_stats.items()},
-                        **{f'test_{k}': v for k, v in test_stats.items()},
-                        'epoch': epoch,
-                        'n_parameters': n_parameters})
+        if args.log_wandb:
+            wandb.log({**{f'train_{k}': v for k, v in train_stats.items()},
+                            **{f'test_{k}': v for k, v in test_stats.items()},
+                            'epoch': epoch,
+                            'n_parameters': n_parameters})
 
         if args.output_dir and misc.is_main_process():
             if log_writer is not None:
@@ -361,7 +356,8 @@ def main(args):
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
-    wandb.finish()
+    if args.log_wandb:
+        wandb.finish()
 
 if __name__ == '__main__':
     args = get_args_parser()

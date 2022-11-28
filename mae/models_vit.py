@@ -58,20 +58,3 @@ def vit_base_patch16(**kwargs):
         patch_size=16, num_heads=12, mlp_ratio=4, qkv_bias=True,
         norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
-
-
-"""
-# This will be unnecessary since we are only going to use the smallest one with different encoder/decoder depth/dimension
-def vit_large_patch16(**kwargs):
-    model = VisionTransformer(
-        patch_size=16, embed_dim=1024, depth=24, num_heads=16, mlp_ratio=4, qkv_bias=True,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
-    return model
-
-
-def vit_huge_patch14(**kwargs):
-    model = VisionTransformer(
-        patch_size=14, embed_dim=1280, depth=32, num_heads=16, mlp_ratio=4, qkv_bias=True,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
-    return model
-"""
