@@ -247,11 +247,6 @@ def main(args):
 
         # load pre-trained model
         msg = model.load_state_dict(checkpoint_model, strict=False)  # load's the parameters as much as it overlaps
-        f = open("control.txt", "a")
-        for name, param in model.named_parameters():
-            f.write('\n' + str(name))
-            f.write('\n' + str(param))
-        f.close()
         print(msg)
 
         if args.test_loading:
