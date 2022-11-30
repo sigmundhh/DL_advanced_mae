@@ -77,8 +77,7 @@ class small_CNN(nn.Module):
         )
         self.dec_5 = nn.Sequential(
             nn.Upsample(scale_factor=2, mode='bilinear'),   # 224x224x128
-            nn.Conv2d(16, 3, kernel_size=3, stride=1, padding=1),   # 224x224x3
-            nn.ReLU()
+            nn.Conv2d(16, 3, kernel_size=3, stride=1, padding=1)   # 224x224x3
         )
         # -------------------------------------------------------------------------------------
     
@@ -270,9 +269,7 @@ class CNN(nn.Module):
             nn.ReLU()
         )
         self.dec_10 = nn.Sequential(
-            nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1),   # 224x224x3
-            #nn.BatchNorm2d(3), don't know if this is a good idea to have or not??
-            nn.ReLU()  # I think this is good since pixel values should be >=0
+            nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1)   # 224x224x3
         )
         # -------------------------------------------------------------------------------------
     
