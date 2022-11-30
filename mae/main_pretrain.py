@@ -34,7 +34,7 @@ import models_mae
 
 from engine_pretrain import train_one_epoch
 
-#import wandb
+import wandb
 
 def get_args_parser():
     parser = argparse.ArgumentParser('MAE pre-training', add_help=False)
@@ -120,15 +120,15 @@ def get_args_parser():
 def main(args):
     misc.init_distributed_mode(args)
 
-    """
+    
     # WandB init
     wandb.init(
         project="DL_advanced_mae",
         config=args,
         sync_tensorboard=True,
-        name = f'pt/dec_depth:{args.decoder_depth}/dec_dim:{args.decoder_dim}'
+        name = f'pt/simple_loss'
     )
-    """
+    
 
     print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
     print("{}".format(args).replace(', ', ',\n'))
@@ -226,8 +226,6 @@ def main(args):
 
     misc.load_model(args=args, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler)
 
-    old_model = model
-
     print(f"Start training for {args.epochs} epochs")
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
@@ -247,10 +245,10 @@ def main(args):
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                         'epoch': epoch,}
         
-        """
+        
         wandb.log({**{f'train_{k}': v for k, v in train_stats.items()},
                         'epoch': epoch,})
-        """
+        
 
         if args.output_dir and misc.is_main_process():
             if log_writer is not None:
@@ -258,23 +256,10 @@ def main(args):
             with open(os.path.join(args.output_dir, "log.txt"), mode="a", encoding="utf-8") as f:
                 f.write(json.dumps(log_stats) + "\n")
 
-        i = 0
-        for p_new in model.parameters():
-            j = 0
-            for p_old in old_model.parameters():
-                if i == j:
-                    print('-'*30)
-                    a = torch.norm(p_new.data - p_old.data)
-                    print(a)
-                j += 1
-            i += 1            
-        fvdfbdf
-
-
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
-    #wandb.finish()
+    wandb.finish()
 
 if __name__ == '__main__':
     args = get_args_parser()
