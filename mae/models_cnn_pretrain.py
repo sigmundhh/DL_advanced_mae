@@ -364,7 +364,7 @@ class CNN(nn.Module):
         removed_patch_loss = (square_differnece * inverse_masks).sum()/inverse_masks.sum()
         return removed_patch_loss, simple_loss
 
-    def forward(self, imgs, mask_ratio=0.75, patch_size=16): # def forward(self, img, masking_ratio)
+    def forward(self, imgs, mask_ratio=0.75, patch_size=16): 
         masked_imgs, masks = self.random_mask(imgs, mask_ratio, patch_size) # we should randomly mask x and I believe that should be it. 
         latent = self.forward_encoder(masked_imgs)  
         pred_imgs = self.forward_decoder(latent)   # Should ideally reconstruct the images

@@ -49,9 +49,12 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         samples = samples.to(device, non_blocking=True)
         targets = targets.to(device, non_blocking=True)
 
-        if mixup_fn is not None:
-            samples, targets = mixup_fn(samples, targets)
-
+        # I don't think having this kind of a target vector is good for the CNN approach. Use 
+        # the usual one-hot vector instead
+        #if mixup_fn is not None:
+        #    samples, targets = mixup_fn(samples, targets)
+        targets = torch.nn.functional.one_hot(targets, num_classes=1000)
+        
         with torch.cuda.amp.autocast():
             outputs = model(samples)
             loss = criterion(outputs, targets)
