@@ -85,8 +85,11 @@ def get_args_parser():
     parser.add_argument('--dist_url', default='env://',
                         help='url used to set up distributed training')
 
-    ##
+    # wandb
     parser.add_argument('--log_wandb', default=True, type=bool)
+    
+    # Use the simple or complicated loss
+    parser.add_argument('--simple_loss', default=False, type=bool)
     return parser
 
 def main(args):
