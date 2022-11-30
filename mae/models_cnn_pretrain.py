@@ -147,16 +147,20 @@ class small_CNN(nn.Module):
         pred_imgs = self.dec_5(out)
         return pred_imgs
 
-    def loss_forward(self, imgs, preds):
-        simple_loss = torch.mean((imgs - preds) ** 2) # do not take into consideration about the masked/not masked parts
-        return simple_loss
+    def loss_forward(self, imgs, preds, masks):
+        # masks 1 is keep 0 is remove
+        square_differnece = (imgs - preds) ** 2  # size = (bs, c, h, w)
+        simple_loss = torch.mean(square_differnece) 
+        inverse_masks = 1 - masks # 0 is keep 1 is remove, size = (bs, c, h, w)
+        removed_patch_loss = (square_differnece * inverse_masks).sum()/inverse_masks.sum()
+        return removed_patch_loss, simple_loss
 
     def forward(self, imgs, mask_ratio=0.75, patch_size=16): # def forward(self, img, masking_ratio)
         masked_imgs = self.random_mask(imgs, mask_ratio, patch_size) # we should randomly mask x and I believe that should be it. 
         latent = self.forward_encoder(masked_imgs)  
         pred_imgs = self.forward_decoder(latent)   # Should ideally reconstruct the images
-        loss = self.loss_forward(imgs, pred_imgs)
-        return loss #, preds, masks # return loss
+        loss, simple_loss = self.loss_forward(imgs, pred_imgs)
+        return loss, simple_loss
 
 
 class CNN(nn.Module):
