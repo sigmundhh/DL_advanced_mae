@@ -272,7 +272,14 @@ class CNN(nn.Module):
             nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1)   # 224x224x3
         )
         # -------------------------------------------------------------------------------------
+
+        self.apply(self._init_weights)
     
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            print('halleluja')
+            torch.nn.init.xavier_uniform(module.weight)
+
     def random_mask(self, imgs, mask_ratio, patch_size):
         "Takes in the images and randomly masks them. Then it returns masked imgs as batches"
         N, c, h, w = imgs.shape
