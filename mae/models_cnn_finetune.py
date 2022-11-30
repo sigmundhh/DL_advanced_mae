@@ -55,6 +55,12 @@ class small_CNN(nn.Module):
         self.fc1= nn.Sequential(
             nn.Linear(1024, classes))
      
+    def initialize_weights(self, m):
+        "Initialize the last couple of layers"
+        if isinstance(m, nn.Linear):
+            nn.init.xavier_uniform_(m.weight.data)
+            nn.init.constant_(m.bias.data, 0)
+
     def forward(self, x):
         out = self.enc_1(x)
         out = self.enc_2(out)
@@ -143,7 +149,14 @@ class CNN(nn.Module):
             nn.ReLU())
         self.fc2= nn.Sequential(
             nn.Linear(4096, classes))
-     
+
+    def initialize_weights(self, m):
+        "Initialize the last couple of layers"
+        if isinstance(m, nn.Linear):
+            nn.init.xavier_uniform_(m.weight.data)
+            nn.init.constant_(m.bias.data, 0)
+
+
     def forward(self, x):
         out = self.enc_1(x)
         out = self.enc_2(out)
@@ -166,14 +179,14 @@ class CNN(nn.Module):
 
 def cnn_model(**kwargs):
     model = CNN(
-        **kwargs
-        )
+        **kwargs)
+    model = model.apply(model.initialize_weights)  # initialize the linear layers
     return model
 
 def cnn_model_small(**kwargs):
     model = small_CNN(
-        **kwargs
-    )
+        **kwargs)
+    model = model.apply(model.initialize_weights)  # initialize the linear layers
     return model
 
 # set recommended archs

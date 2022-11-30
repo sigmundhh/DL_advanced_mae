@@ -89,9 +89,6 @@ class small_CNN(nn.Module):
         elif isinstance(m, nn.BatchNorm2d):
             nn.init.constant_(m.weight.data, 1)
             nn.init.constant_(m.bias.data, 0)
-        elif isinstance(m, nn.Linear):
-            nn.init.kaiming_uniform_(m.weight.data)
-            nn.init.constant_(m.bias.data, 0)
 
     def random_mask(self, imgs, mask_ratio, patch_size):
         "Takes in the images and randomly masks them. Then it returns masked imgs"
@@ -129,7 +126,7 @@ class small_CNN(nn.Module):
         batch_mask = torch.repeat_interleave(mask_colored_increased, patch_size, dim=3)
 
         masked_imgs = imgs * batch_mask
-        return masked_imgs
+        return masked_imgs, batch_mask
 
     def forward_encoder(self, masked_imgs):
         out = self.enc_1(masked_imgs)
@@ -156,11 +153,11 @@ class small_CNN(nn.Module):
         return removed_patch_loss, simple_loss
 
     def forward(self, imgs, mask_ratio=0.75, patch_size=16): # def forward(self, img, masking_ratio)
-        masked_imgs = self.random_mask(imgs, mask_ratio, patch_size) # we should randomly mask x and I believe that should be it. 
+        masked_imgs, masks = self.random_mask(imgs, mask_ratio, patch_size) # we should randomly mask x and I believe that should be it. 
         latent = self.forward_encoder(masked_imgs)  
         pred_imgs = self.forward_decoder(latent)   # Should ideally reconstruct the images
-        loss, simple_loss = self.loss_forward(imgs, pred_imgs)
-        return loss, simple_loss
+        loss, simple_loss = self.loss_forward(imgs, pred_imgs, masks)
+        return loss, simple_loss 
 
 
 class CNN(nn.Module):
@@ -296,9 +293,6 @@ class CNN(nn.Module):
                 nn.init.constant_(m.bias.data, 0)
         elif isinstance(m, nn.BatchNorm2d):
             nn.init.constant_(m.weight.data, 1)
-            nn.init.constant_(m.bias.data, 0)
-        elif isinstance(m, nn.Linear):
-            nn.init.kaiming_uniform_(m.weight.data)
             nn.init.constant_(m.bias.data, 0)
 
     def random_mask(self, imgs, mask_ratio, patch_size):
