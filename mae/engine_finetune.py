@@ -53,12 +53,12 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         # the usual one-hot vector instead
         #if mixup_fn is not None:
         #    samples, targets = mixup_fn(samples, targets)
-        targets = torch.nn.functional.one_hot(targets, num_classes=1000)
-        
+        #targets = torch.nn.functional.one_hot(targets, num_classes=1000)
+
         with torch.cuda.amp.autocast():
             outputs = model(samples)
             loss = criterion(outputs, targets)
-
+            
         loss_value = loss.item()
 
         if not math.isfinite(loss_value):
