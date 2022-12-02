@@ -53,8 +53,7 @@ class small_CNN(nn.Module):
             nn.Linear(7*7*128, 1024),
             nn.ReLU())
         self.fc1= nn.Sequential(
-            nn.Linear(1024, classes),
-            nn.Softmax(1))
+            nn.Linear(1024, classes))
      
     def initialize_weights(self, m):
         "Initialize the last couple of layers"
@@ -149,8 +148,7 @@ class CNN(nn.Module):
             nn.Linear(4096, 4096),
             nn.ReLU())
         self.fc2= nn.Sequential(
-            nn.Linear(4096, classes),
-            nn.Softmax(1))
+            nn.Linear(4096, classes))
 
     def initialize_weights(self, m):
         "Initialize the last couple of layers"
