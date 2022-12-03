@@ -114,6 +114,13 @@ def get_args_parser():
     parser.add_argument('--dist_url', default='env://',
                         help='url used to set up distributed training')
 
+    # loss arguments
+    parser.add_argument('--alpha', default=0., type=float,
+                        help='coefficient for loss function')
+    
+    parser.add_argument('--beta', default=1., type=float,
+                        help='coefficient for loss function')
+
     return parser
 
 
