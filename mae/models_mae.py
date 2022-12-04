@@ -214,9 +214,22 @@ class MaskedAutoencoderViT(nn.Module):
         #loss = torch.mean(loss)
         return loss
 
-    def forward(self, imgs, mask_ratio=0.75, alpha=0, beta=1):
+    def forward(self, imgs, mask_ratio=0.75, alpha=0, beta=1, last=False):
         latent, mask, ids_restore = self.forward_encoder(imgs, mask_ratio)
         pred = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
+        if last:
+            pred_visualize = self.unpatchify(pred)
+            import torchvision
+            to_pil = torchvision.transforms.ToPILImage()
+            img = to_pil(imgs[0])
+            img.save('img1.jpg')
+            pred = to_pil(pred_visualize[0])
+            pred.save('rec1.jpg')
+            
+            img = to_pil(imgs[17])
+            img.save('img17.jpg')
+            pred = to_pil(pred_visualize[17])
+            pred.save('rec17.jpg')
         loss = self.forward_loss(imgs, pred, mask, alpha, beta)
         return loss, pred, mask
 
