@@ -214,7 +214,7 @@ class MaskedAutoencoderViT(nn.Module):
         #loss = torch.mean(loss)
         return loss
 
-    def show_reconstructed(self, img, sample, name):
+    def show_reconstructed(self, imgs, sample, name):
         import torchvision
         to_pil = torchvision.transforms.ToPILImage()
 
