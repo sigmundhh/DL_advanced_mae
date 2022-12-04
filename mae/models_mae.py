@@ -233,10 +233,19 @@ class MaskedAutoencoderViT(nn.Module):
         latent, mask, ids_restore = self.forward_encoder(imgs, mask_ratio)
         pred = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
         if last:
+            mask_3d = torch.reshape(mask, shape=(64, 14, 14)) # hard coded 14 and 64s. 14 is 224/16 actually and 64=bs but in this experiment these will always be true
+            mask_3d = mask_3d[:, None, :, :]
+            mask_colored = mask_3d.repeat(1, 3, 1, 1)
+            mask_colored_increased = torch.repeat_interleave(mask_colored, 16, dim=2)  # hard coded 16 is from 224/14 but in our experiments this will always be true. 
+            batch_mask = 1-torch.repeat_interleave(mask_colored_increased, 16, dim=3)    # hard coded
+            latent_visualize = batch_mask * imgs
+
             pred_visualize = self.unpatchify(pred)
             self.show_reconstructed(imgs, 0, 'real_img')
+            self.show_reconstructed(latent_visualize, 0, 'masked_img')
             self.show_reconstructed(pred_visualize, 0, 'reconstructed_img')
             self.show_reconstructed(imgs, 31, 'real_img')
+            self.show_reconstructed(latent_visualize, 31, 'masked_img')
             self.show_reconstructed(pred_visualize, 31, 'reconstructed_img')
         loss = self.forward_loss(imgs, pred, mask, alpha, beta)
         return loss, pred, mask
