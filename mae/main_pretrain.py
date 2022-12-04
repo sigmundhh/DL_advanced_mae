@@ -120,6 +120,10 @@ def get_args_parser():
     
     parser.add_argument('--beta', default=1., type=float,
                         help='coefficient for loss function')
+    
+    # show reconstruction images
+    parser.add_argument('--show_reconstructed', default=False, type=bool,
+                        help='show the reconstructed image')
 
     return parser
 
