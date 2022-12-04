@@ -18,6 +18,8 @@ from timm.models.vision_transformer import PatchEmbed, Block
 
 from util.pos_embed import get_2d_sincos_pos_embed
 
+import torchvision
+import wandb
 
 class MaskedAutoencoderViT(nn.Module):
     """ Masked Autoencoder with VisionTransformer backbone
@@ -215,7 +217,6 @@ class MaskedAutoencoderViT(nn.Module):
         return loss
 
     def show_reconstructed(self, imgs, sample, name):
-        import torchvision
         to_pil = torchvision.transforms.ToPILImage()
 
         IMG_MEAN = [0.485, 0.456, 0.406]
@@ -227,6 +228,7 @@ class MaskedAutoencoderViT(nn.Module):
             new_img[i] = imgs[i] * IMG_STD[i] + IMG_MEAN[i]
         img = to_pil(torch.clamp(new_img, 0, 1))
         img.save(name + str(sample) + '.jpg')
+        wandb.log({"img": [wandb.Image(img, caption=name + str(sample))]})
         return
 
     def forward(self, imgs, mask_ratio=0.75, alpha=0, beta=1, last=False):
@@ -241,12 +243,12 @@ class MaskedAutoencoderViT(nn.Module):
             latent_visualize = batch_mask * imgs
 
             pred_visualize = self.unpatchify(pred)
-            self.show_reconstructed(imgs, 0, 'real_img')
-            self.show_reconstructed(latent_visualize, 0, 'masked_img')
-            self.show_reconstructed(pred_visualize, 0, 'reconstructed_img')
-            self.show_reconstructed(imgs, 31, 'real_img')
-            self.show_reconstructed(latent_visualize, 31, 'masked_img')
-            self.show_reconstructed(pred_visualize, 31, 'reconstructed_img')
+            self.show_reconstructed(imgs, 11, 'real_img')
+            self.show_reconstructed(latent_visualize, 11, 'masked_img')
+            self.show_reconstructed(pred_visualize, 11, 'reconstructed_img')
+            self.show_reconstructed(imgs, 55, 'real_img')
+            self.show_reconstructed(latent_visualize, 55, 'masked_img')
+            self.show_reconstructed(pred_visualize, 55, 'reconstructed_img')
         loss = self.forward_loss(imgs, pred, mask, alpha, beta)
         return loss, pred, mask
 
