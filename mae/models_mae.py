@@ -214,22 +214,30 @@ class MaskedAutoencoderViT(nn.Module):
         #loss = torch.mean(loss)
         return loss
 
+    def show_reconstructed(self, img, sample, name):
+        import torchvision
+        to_pil = torchvision.transforms.ToPILImage()
+
+        IMG_MEAN = [0.485, 0.456, 0.406]
+        IMG_STD = [0.229, 0.224, 0.225]
+
+        imgs = imgs[sample]
+        new_img = torch.zeros_like(imgs)
+        for i in range(3):
+            new_img[i] = imgs[i] * IMG_STD[i] + IMG_MEAN[i]
+        img = to_pil(torch.clamp(new_img, 0, 1))
+        img.save(name + str(sample) + '.jpg')
+        return
+
     def forward(self, imgs, mask_ratio=0.75, alpha=0, beta=1, last=False):
         latent, mask, ids_restore = self.forward_encoder(imgs, mask_ratio)
         pred = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
         if last:
             pred_visualize = self.unpatchify(pred)
-            import torchvision
-            to_pil = torchvision.transforms.ToPILImage()
-            img = to_pil(imgs[0])
-            img.save('img1.jpg')
-            pred = to_pil(pred_visualize[0])
-            pred.save('rec1.jpg')
-            
-            img = to_pil(imgs[17])
-            img.save('img17.jpg')
-            pred = to_pil(pred_visualize[17])
-            pred.save('rec17.jpg')
+            self.show_reconstructed(imgs, 0, 'real_img')
+            self.show_reconstructed(pred_visualize, 0, 'reconstructed_img')
+            self.show_reconstructed(imgs, 31, 'real_img')
+            self.show_reconstructed(pred_visualize, 31, 'reconstructed_img')
         loss = self.forward_loss(imgs, pred, mask, alpha, beta)
         return loss, pred, mask
 
