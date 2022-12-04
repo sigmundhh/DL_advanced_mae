@@ -133,7 +133,7 @@ def main(args):
         project="DL_advanced_mae",
         config=args,
         sync_tensorboard=True,
-        name = f'pt/simple_loss'
+        name = f'pt/new_loss/alpha:{args.alpha}'
     )
     
 
