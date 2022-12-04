@@ -188,7 +188,7 @@ def main(args):
         project="DL_advanced_mae",
         config=args,
         sync_tensorboard=True,
-        name = f'pt/new_loss/alpha:{args.alpha}/beta:{args.beta}'
+        name = f'ft/new_loss/alpha:{args.alpha}/beta:{args.beta}'
     )
 
     print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
