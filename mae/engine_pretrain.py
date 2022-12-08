@@ -44,11 +44,14 @@ def train_one_epoch(model: torch.nn.Module,
 
         samples = samples.to(device, non_blocking=True)
 
+        last_epoch = (True if (epoch + 1) == args.epochs else False) and (data_iter_step==0) and (args.show_reconstructed)
+        save_image = (True if (epoch % 10 == 0) else False) and (data_iter_step==0) and (args.show_reconstructed)
+        save_image = save_image or last_epoch
         with torch.cuda.amp.autocast():
             if args.simple_loss:
-                _, loss = model(samples, args.mask_ratio, 16)
+                _, loss = model(samples, args.mask_ratio, args.patch_size, save_image, epoch)
             else:
-                loss, _ = model(samples, args.mask_ratio, 16)
+                loss, _ = model(samples, args.mask_ratio, args.patch_size, save_image, epoch)
         loss_value = loss.item()
 
         if not math.isfinite(loss_value):

@@ -15,6 +15,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import torchvision
+
 
 class small_CNN(nn.Module):
     def __init__(self):
@@ -152,10 +154,33 @@ class small_CNN(nn.Module):
         removed_patch_loss = (square_differnece * inverse_masks).sum()/inverse_masks.sum()
         return removed_patch_loss, simple_loss
 
-    def forward(self, imgs, mask_ratio=0.75, patch_size=16): # def forward(self, img, masking_ratio)
+    def show_reconstructed(self, imgs, sample, name, epoch):
+        to_pil = torchvision.transforms.ToPILImage()
+
+        IMG_MEAN = [0.485, 0.456, 0.406]
+        IMG_STD = [0.229, 0.224, 0.225]
+
+        imgs = imgs[sample]
+        new_img = torch.zeros_like(imgs)
+        for i in range(3):
+            new_img[i] = imgs[i] * IMG_STD[i] + IMG_MEAN[i]
+        img = to_pil(torch.clamp(new_img, 0, 1))
+        img.save(name + '_ep:' + str(epoch) + '_ex:' + str(sample) + '.jpg')
+        wandb.log({"img": [wandb.Image(img, caption=name + str(sample))]})
+        return
+
+    def forward(self, imgs, mask_ratio=0.75, patch_size=16, save_reconstructed=False, epoch=0): # def forward(self, img, masking_ratio)
         masked_imgs, masks = self.random_mask(imgs, mask_ratio, patch_size) # we should randomly mask x and I believe that should be it. 
         latent = self.forward_encoder(masked_imgs)  
         pred_imgs = self.forward_decoder(latent)   # Should ideally reconstruct the images
+        
+        if save_reconstructed:
+            ranodm_samples = [11, 55]
+            for sample in ranodm_samples:
+                self.show_reconstructed(imgs, sample, 'real_img', epoch)
+                self.show_reconstructed(masked_imgs, sample, 'masked_img', epoch)
+                self.show_reconstructed(pred_imgs, sample, 'reconstructed_img', epoch)
+        
         loss, simple_loss = self.loss_forward(imgs, pred_imgs, masks)
         return loss, simple_loss 
 
@@ -364,10 +389,33 @@ class CNN(nn.Module):
         removed_patch_loss = (square_differnece * inverse_masks).sum()/inverse_masks.sum()
         return removed_patch_loss, simple_loss
 
-    def forward(self, imgs, mask_ratio=0.75, patch_size=16): 
+    def show_reconstructed(self, imgs, sample, name, epoch):
+        to_pil = torchvision.transforms.ToPILImage()
+
+        IMG_MEAN = [0.485, 0.456, 0.406]
+        IMG_STD = [0.229, 0.224, 0.225]
+
+        imgs = imgs[sample]
+        new_img = torch.zeros_like(imgs)
+        for i in range(3):
+            new_img[i] = imgs[i] * IMG_STD[i] + IMG_MEAN[i]
+        img = to_pil(torch.clamp(new_img, 0, 1))
+        img.save(name + '_ep:' + str(epoch) + '_ex:' + str(sample) + '.jpg')
+        wandb.log({"img": [wandb.Image(img, caption=name + str(sample))]})
+        return
+
+    def forward(self, imgs, mask_ratio=0.75, patch_size=16, save_reconstructed=False, epoch=0): # def forward(self, img, masking_ratio)
         masked_imgs, masks = self.random_mask(imgs, mask_ratio, patch_size) # we should randomly mask x and I believe that should be it. 
         latent = self.forward_encoder(masked_imgs)  
         pred_imgs = self.forward_decoder(latent)   # Should ideally reconstruct the images
+        
+        if save_reconstructed:
+            ranodm_samples = [11, 55]
+            for sample in ranodm_samples:
+                self.show_reconstructed(imgs, sample, 'real_img', epoch)
+                self.show_reconstructed(masked_imgs, sample, 'masked_img', epoch)
+                self.show_reconstructed(pred_imgs, sample, 'reconstructed_img', epoch)
+        
         loss, simple_loss = self.loss_forward(imgs, pred_imgs, masks)
         return loss, simple_loss 
 

@@ -90,6 +90,9 @@ def get_args_parser():
     
     # Use the simple or complicated loss
     parser.add_argument('--simple_loss', default=False, type=bool)
+
+    # show image
+    parser.add_argument('--show_reconstructed', default=True, type=bool)
     return parser
 
 def main(args):

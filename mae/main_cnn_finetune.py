@@ -163,10 +163,10 @@ def main(args):
         import wandb
         # WandB init
         wandb.init(
-            project="DL_advanced_mae",
+            project="test",
             config=args,
             sync_tensorboard=True,
-            name = f'ft/CNN_approach'
+            name = f'ft/CNN_approach_new_lr_test'
         )
 
     print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
@@ -292,7 +292,6 @@ def main(args):
     optimizer = torch.optim.AdamW(param_groups, lr=args.lr)
     loss_scaler = NativeScaler()
 
-    """
     if mixup_fn is not None:
         # smoothing is handled with mixup label transform
         criterion = SoftTargetCrossEntropy()
@@ -300,8 +299,7 @@ def main(args):
         criterion = LabelSmoothingCrossEntropy(smoothing=args.smoothing)
     else:
         criterion = torch.nn.CrossEntropyLoss()
-    """
-    criterion = torch.nn.CrossEntropyLoss()  # use cross entopry loss
+
     print("criterion = %s" % str(criterion))
 
     misc.load_model(args=args, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler)
