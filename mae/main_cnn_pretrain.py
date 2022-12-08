@@ -105,7 +105,7 @@ def main(args):
             project="DL_advanced_mae",
             config=args,
             sync_tensorboard=True,
-            name = f'pt/CNN_approach'
+            name = f'pt/CNN_visualization'
         )
 
     print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))

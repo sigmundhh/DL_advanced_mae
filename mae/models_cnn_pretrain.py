@@ -83,15 +83,6 @@ class small_CNN(nn.Module):
         )
         # -------------------------------------------------------------------------------------
         
-    def initialize_weights(self, m):
-        if isinstance(m, nn.Conv2d):
-            nn.init.xavier_uniform_(m.weight.data)
-            if m.bias is not None:
-                nn.init.constant_(m.bias.data, 0)
-        elif isinstance(m, nn.BatchNorm2d):
-            nn.init.constant_(m.weight.data, 1)
-            nn.init.constant_(m.bias.data, 0)
-
     def random_mask(self, imgs, mask_ratio, patch_size):
         "Takes in the images and randomly masks them. Then it returns masked imgs"
         # imgs = [BS, C, H, W] 
@@ -311,15 +302,6 @@ class CNN(nn.Module):
         )
         # -------------------------------------------------------------------------------------
 
-    def initialize_weights(self, m):
-        if isinstance(m, nn.Conv2d):
-            nn.init.xavier_uniform_(m.weight.data)
-            if m.bias is not None:
-                nn.init.constant_(m.bias.data, 0)
-        elif isinstance(m, nn.BatchNorm2d):
-            nn.init.constant_(m.weight.data, 1)
-            nn.init.constant_(m.bias.data, 0)
-
     def random_mask(self, imgs, mask_ratio, patch_size):
         "Takes in the images and randomly masks them. Then it returns masked imgs as batches"
         N, c, h, w = imgs.shape
@@ -410,7 +392,7 @@ class CNN(nn.Module):
         pred_imgs = self.forward_decoder(latent)   # Should ideally reconstruct the images
         
         if save_reconstructed:
-            ranodm_samples = [11, 55]
+            ranodm_samples = [26, 55]
             for sample in ranodm_samples:
                 self.show_reconstructed(imgs, sample, 'real_img', epoch)
                 self.show_reconstructed(masked_imgs, sample, 'masked_img', epoch)
@@ -422,14 +404,12 @@ class CNN(nn.Module):
 def cnn_model(**kwargs):
     model = CNN(
         **kwargs)
-    model = model.apply(model.initialize_weights)  # initialize the weights
     return model
 
 def cnn_model_small(**kwargs):
     model = small_CNN(
         **kwargs
     )
-    model = model.apply(model.initialize_weights)  # initialize the weights
     return model
 
 cnn = cnn_model

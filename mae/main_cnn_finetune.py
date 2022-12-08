@@ -163,10 +163,10 @@ def main(args):
         import wandb
         # WandB init
         wandb.init(
-            project="test",
+            project="DL_advanced_mae",
             config=args,
             sync_tensorboard=True,
-            name = f'ft/CNN_approach_new_lr_test'
+            name = f'ft/CNN_visualization'
         )
 
     print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
