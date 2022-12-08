@@ -16,7 +16,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import torchvision
-
+import wandb
 
 class small_CNN(nn.Module):
     def __init__(self):
